@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WardrobeTrack v4.1</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>WardrobeTrack</h1>
+            <div class="subtitle">Hostel & Home Rotation Manager</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" onclick="exportData()">Export</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importInput').click()">Import</button>
+            <input type="file" id="importInput" accept=".json" style="display:none;" onchange="importData(this)">
+        </div>
+    </header>
+
+    <!-- Location Switcher Bar -->
+    <div class="location-bar">
+        <span class="location-label">📍 Location:</span>
+        <div class="location-pills" id="locationPills"></div>
+        <button class="btn-icon-sm" title="Add Location" onclick="openLocationModal()">+</button>
+    </div>
+
+    <!-- Dynamic Laundry Alert Banner -->
+    <div id="laundryAlertBanner" class="alert-banner">
+        <div id="laundryAlertText"></div>
+        <button class="btn btn-sm btn-warn" onclick="switchTab('laundry')">View Basket</button>
+    </div>
+
+    <nav>
+        <button class="tab-btn active" data-tab="log" onclick="switchTab('log')">Log Wear</button>
+        <button class="tab-btn" data-tab="wardrobe" onclick="switchTab('wardrobe')">Wardrobe</button>
+        <button class="tab-btn" data-tab="laundry" onclick="switchTab('laundry')">
+            Laundry <span id="laundryBadge" class="badge-count" style="display:none;">0</span>
+        </button>
+        <button class="tab-btn" data-tab="insights" onclick="switchTab('insights')">Analytics</button>
+    </nav>
+
+    <!-- TAB 1: LOG WEAR & FAVORITE OUTFITS -->
+    <div id="log" class="tab-content active">
+        <div class="card">
+            <div class="card-header-flex">
+                <h3>⭐ Favorite Outfit Presets</h3>
+                <span class="subtitle">1-Tap Log</span>
+            </div>
+            <div id="presetsList"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header-flex">
+                <h2>Log Today's Wear</h2>
+                <span id="logLocationHint" class="tag">Showing: All</span>
+            </div>
+            <form id="logForm" onsubmit="handleLogSubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Top (Shirts, Smart Casual, T-Shirts, Jubbah)</label>
+                        <select id="logTopSelect"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bottom (Slacks, Jeans, Tracksuits, Kaili)</label>
+                        <select id="logBottomSelect"></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Underwear (Optional)</label>
+                        <select id="logUnderwearSelect"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Suits / Outer (Optional)</label>
+                        <select id="logSuitSelect"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Occasion / Activity</label>
+                    <select id="logOccasion">
+                        <option value="Casual Outing">Casual Outing</option>
+                        <option value="Lectures">Lectures</option>
+                        <option value="Lab">Lab</option>
+                        <option value="Presentation / Event">Presentation / Event</option>
+                        <option value="Friday Prayer / Mosque">Friday Prayer / Mosque</option>
+                        <option value="Hostel / Room Wear">Hostel / Room Wear</option>
+                    </select>
+                </div>
+                <div class="action-btn-row">
+                    <button type="submit" class="btn flex-1">Log Outfit Wear</button>
+                    <button type="button" class="btn btn-secondary" onclick="saveCurrentAsPreset()">⭐ Save Preset</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header-flex">
+                <h3>Recent Wear History</h3>
+                <button id="clearHistoryBtn" class="btn btn-secondary btn-sm" onclick="clearAllActivity()" style="display:none;">Clear All</button>
+            </div>
+            <div id="activityList"></div>
+        </div>
+    </div>
+
+    <!-- TAB 2: WARDROBE INVENTORY, SEARCH/SORT & PACKING BAG -->
+    <div id="wardrobe" class="tab-content">
+        <div class="wardrobe-toolbar">
+            <div class="filter-scroll" id="categoryFilters"></div>
+            <button id="packModeBtn" class="btn btn-secondary btn-sm nowrap" onclick="togglePackMode()">🎒 Pack Bag</button>
+            <button class="btn btn-secondary btn-sm nowrap" onclick="openCategoryModal()">+ Cat</button>
+        </div>
+
+        <!-- Search & Sort Controls -->
+        <div class="search-sort-row">
+            <input type="text" id="wardrobeSearch" placeholder="🔍 Search clothes..." oninput="renderWardrobeList()">
+            <select id="wardrobeSort" onchange="renderWardrobeList()">
+                <option value="default">Sort: Added</option>
+                <option value="ready">Ready First</option>
+                <option value="leastWorn">Least Worn</option>
+                <option value="mostWorn">Most Worn</option>
+            </select>
+        </div>
+
+        <!-- Batch Packing Action Bar -->
+        <div id="packActionBar" class="pack-bar">
+            <div class="pack-bar-top">
+                <span><b id="packCount">0</b> selected</span>
+                <div class="action-btn-row">
+                    <button class="btn btn-secondary btn-sm" onclick="selectAllVisibleForPack()">Select All</button>
+                    <button class="btn btn-secondary btn-sm" onclick="togglePackMode()">Cancel</button>
+                </div>
+            </div>
+            <div class="pack-bar-bottom">
+                <span class="subtitle">Move packed items to:</span>
+                <select id="packDestinationSelect" class="pack-select"></select>
+                <button class="btn btn-success btn-sm" onclick="executeBatchMove()">Move Now</button>
+            </div>
+        </div>
+
+        <div class="card" id="wardrobeList"></div>
+    </div>
+
+    <!-- TAB 3: LAUNDRY & REMINDER SETTINGS -->
+    <div id="laundry" class="tab-content">
+        <div class="card">
+            <div class="card-header-flex">
+                <h3>In Laundry Basket</h3>
+                <button id="washAllBtn" class="btn btn-success btn-sm" onclick="washAllLaundry()" style="display:none;">Wash All</button>
+            </div>
+            <div id="needsWashList"></div>
+        </div>
+
+        <div class="card">
+            <h3>Semi-Worn (Re-wearable)</h3>
+            <div id="rewearableList"></div>
+        </div>
+
+        <div class="card">
+            <h3>Laundry Reminder Limit</h3>
+            <div class="form-row">
+                <div class="form-group no-margin">
+                    <label>Alert when basket reaches (items):</label>
+                    <input type="number" id="prefThreshold" min="1" max="50" value="5" onchange="saveLaundryPrefs()">
+                </div>
+                <div class="form-group no-margin">
+                    <label>Reminder Status:</label>
+                    <select id="prefEnabled" onchange="saveLaundryPrefs()">
+                        <option value="true">Active</option>
+                        <option value="false">Muted</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: ANALYTICS & RESET -->
+    <div id="insights" class="tab-content">
+        <div class="card">
+            <h2>Wardrobe Overview</h2>
+            <div class="stat-grid" id="overviewStats"></div>
+            <h3>Location Split</h3>
+            <div class="stat-grid two-col" id="locationStats"></div>
+            <h3>Wears by Category</h3>
+            <div id="categoryAnalytics"></div>
+        </div>
+
+        <div class="card">
+            <h3>Top Worn vs. Least Worn</h3>
+            <div id="topBottomAnalytics"></div>
+        </div>
+
+        <div class="card reset-card">
+            <h3>Testing & Data Reset</h3>
+            <p class="empty-msg" style="margin-top:0;">Finished testing? Reset all cycle counts, lifetime wears, laundry status, and activity logs back to zero while keeping your saved clothes.</p>
+            <button class="btn btn-danger full-width" onclick="resetTestingStats()">Reset All Wear Counts & Analytics</button>
+        </div>
+
+        <div class="storage-footer" id="storageMeter"></div>
+    </div>
+
+    <button class="btn floating-action-btn" onclick="openItemModal()">+</button>
+</div>
+
+<!-- FULL-SIZE PHOTO LIGHTBOX MODAL -->
+<div id="photoLightbox" class="modal" onclick="closeLightbox(event)">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+        <div class="card-header-flex">
+            <h3 id="lightboxTitle">Item Preview</h3>
+            <button class="btn-delete-log" onclick="closeLightbox()">✕</button>
+        </div>
+        <img id="lightboxImg" src="" alt="Full Size Preview">
+        <div id="lightboxMeta" class="lightbox-meta"></div>
+    </div>
+</div>
+
+<!-- ADD / EDIT ITEM MODAL -->
+<div id="itemModal" class="modal">
+    <div class="modal-content">
+        <h2 id="modalTitle">Add Wardrobe Item</h2>
+        <form id="itemForm" onsubmit="saveItem(event)">
+            <input type="hidden" id="editIndex">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="itemCategory" onchange="onCategoryChange()"></select>
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <select id="itemLocation"></select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label id="nameLabel">Item Name</label>
+                <input type="text" id="itemName" required placeholder="e.g., Navy Uniqlo Oxford Shirt">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Color Tag</label>
+                    <input type="color" id="itemColor" value="#2563eb" class="color-picker">
+                </div>
+                <div class="form-group">
+                    <label>Max Wears Before Wash</label>
+                    <input type="number" id="itemThreshold" value="2" min="1" max="30" required>
+                </div>
+            </div>
+
+            <div class="form-group" id="lifetimeEditGroup" style="display:none;">
+                <label>Lifetime Wears (Manual Adjust / Reset)</label>
+                <input type="number" id="itemLifetime" value="0" min="0">
+            </div>
+
+            <div class="form-group" id="photoSection">
+                <label>Item Photo (Optional)</label>
+                <div class="photo-upload-area" onclick="document.getElementById('photoInput').click()">
+                    <span>Tap to Upload or Snap Photo</span>
+                    <input type="file" id="photoInput" accept="image/*" onchange="previewPhoto(this)">
+                </div>
+                <img id="previewImage" alt="Preview">
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" id="deleteBtn" class="btn btn-danger" style="display:none;" onclick="deleteItem()">Delete</button>
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeItemModal()">Cancel</button>
+                <button type="submit" class="btn flex-1">Save Item</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD CATEGORY MODAL -->
+<div id="categoryModal" class="modal">
+    <div class="modal-content">
+        <h2>Add Custom Category</h2>
+        <form id="categoryForm" onsubmit="saveNewCategory(event)">
+            <div class="form-group">
+                <label>Category Name</label>
+                <input type="text" id="newCatName" required placeholder="e.g., Hoodie, Kurta, Shorts">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Outfit Slot Type</label>
+                    <select id="newCatSlot">
+                        <option value="top">Top</option>
+                        <option value="bottom">Bottom</option>
+                        <option value="underwear">Underwear</option>
+                        <option value="suit">Suits / Outer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Default Wear Limit</label>
+                    <input type="number" id="newCatThreshold" value="2" min="1" max="30" required>
+                </div>
+            </div>
+            <div id="customCatList" class="custom-cat-list"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeCategoryModal()">Close</button>
+                <button type="submit" class="btn flex-1">Add Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD LOCATION MODAL -->
+<div id="locationModal" class="modal">
+    <div class="modal-content">
+        <h2>Manage Locations</h2>
+        <form onsubmit="saveNewLocation(event)">
+            <div class="form-group">
+                <label>New Location Name</label>
+                <input type="text" id="newLocName" required placeholder="e.g., Car, Parents' House">
+            </div>
+            <div id="locationList" class="custom-cat-list"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeLocationModal()">Close</button>
+                <button type="submit" class="btn flex-1">Add Location</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
